@@ -13,12 +13,7 @@ def add_noise(data, mu = 0, sig = 80):
     '''
     dshape = data.shape
     noise = np.random.normal(mu, sig, dshape)
-    
-    try:
-        return data + noise
-    #Not totally sure if this works but this should delete the noise array from memory after return statement
-    finally:
-        del noise
+    return data + noise
 
 def apply_threshold(x, thresh = 400):
     '''
@@ -28,16 +23,12 @@ def apply_threshold(x, thresh = 400):
     '''
     data = deepcopy(x)
     bellowthresh = data < thresh
-    data[bellowthresh] = 0*data[bellowthresh]
-    
-    try:
-        return data
-    finally:
-        del data
+    data[bellowthresh] = 0
+    return data
 
 def quantize_manual(x, charge_levels, quant_values):
     '''
-    Currently does nothing but id like to add manual quantization here aswell
+    Currently does nothing but BW would like to add manual quantization here as well
         data (np.array or pd.DataFrame): input data 
         charge_levels (list, shape=(N-1)): finite charge levels for boundaries of N bins. 
             eg. for N=4 bins with boundaries [-9e19, 400], [400, 800], [800,1200], [1200, 9e19]
@@ -76,3 +67,22 @@ def quantize_manual(x, charge_levels, quant_values):
     finally:
         del data, dfq, mask
 
+def apply_offset(block, offset, pixel_array_sizeX, pixel_array_sizeY):
+    '''
+    Apply an offset to the per-time-stamp data from the entire pixel array
+        block (list): input data at a specific time stamp (2D)
+        offset (tuple): (x_offset, y_offset) to apply to the block
+        pixel_array_sizeX (int): size of the pixel array in X dimension
+        pixel_array_sizeY (int): size of the pixel array in Y dimension
+    '''
+    rows, cols = pixel_array_sizeY, pixel_array_sizeX
+    new_block = [[0 for _ in range(cols)] for _ in range(rows)]
+    
+    for i in range(rows):
+        for j in range(cols):
+            if block[i][j] != 0:
+                new_i = i + offset[0]
+                new_j = j + offset[1]
+                if 0 <= new_i < rows and 0 <= new_j < cols:
+                    new_block[new_i][new_j] = block[i][j]
+    return new_block
