@@ -4,15 +4,18 @@ import pandas as pd
 
 # charge_levels = [[-9e19, 400], [400, 800], [800,1200], [1200, 9e19]]
 
-def add_noise(data, mu = 0, sig = 80):
+def add_noise(data, mu = 0, sig = 80, integrate = False):
     '''
     Add random gaussian noise to input data 
-        data (np.array or pd.DataFrame): input data 
+        data (np.array or pd.DataFrame): input data with dims (event, time, 2d image)
         mu (float): mean of noise 
         sig (float): standard deviation of noise
     '''
     dshape = data.shape
     noise = np.random.normal(mu, sig, dshape)
+
+    if integrate:
+        noise = np.cumsum(noise, axis = 1)
     return data + noise
 
 def apply_threshold(x, thresh = 400):
@@ -86,3 +89,28 @@ def apply_offset(block, offset, pixel_array_sizeX, pixel_array_sizeY):
                 if 0 <= new_i < rows and 0 <= new_j < cols:
                     new_block[new_i][new_j] = block[i][j]
     return new_block
+
+def contained(df, axis = 'y'):
+    '''
+    Yeilds the subset of a datframe df with no charge at the edge bins of the image along a specified axis. NOTE: This assumes the combined data and label format in shuffled datasets.
+        axis (str): axis of cluster to project along. 
+    '''
+    cols = np.arange(math.prod(dshape)).astype('str')
+    data = df[cols].values.reshape(-1, *dshape)
+    
+    if axis == 'x':
+        projection = data[:,-1,:,:].sum(axis=1)
+    elif axis == 'y':
+        projection = data[:,-1,:,:].sum(axis=2)
+    else:
+        raise ValueError("axis must be either 'x' or 'y'.")
+    
+    contained = np.zeros(len(data)).astype('bool')
+    for i, proj in enumerate(projecton):
+        if (proj[0] == 0 and proj[-1] == 0):
+            contained[i] = True
+        
+    dfc = df.loc[contained]
+    # print('OG shape:', df.shape, 'Contained shape:', dfc.shape, 'Frac=',f"{dfc.shape[0]/df.shape[0]:.3f}")
+    
+    return dfc
