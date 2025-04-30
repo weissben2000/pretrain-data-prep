@@ -1,6 +1,7 @@
 import numpy as np
 from copy import deepcopy
 import pandas as pd
+import math
 
 # charge_levels = [[-9e19, 400], [400, 800], [800,1200], [1200, 9e19]]
 
@@ -95,6 +96,7 @@ def contained(df, axis = 'y'):
     Yeilds the subset of a datframe df with no charge at the edge bins of the image along a specified axis. NOTE: This assumes the combined data and label format in shuffled datasets.
         axis (str): axis of cluster to project along. 
     '''
+    dshape = (20,13,21)
     cols = np.arange(math.prod(dshape)).astype('str')
     data = df[cols].values.reshape(-1, *dshape)
     
@@ -106,7 +108,7 @@ def contained(df, axis = 'y'):
         raise ValueError("axis must be either 'x' or 'y'.")
     
     contained = np.zeros(len(data)).astype('bool')
-    for i, proj in enumerate(projecton):
+    for i, proj in enumerate(projection):
         if (proj[0] == 0 and proj[-1] == 0):
             contained[i] = True
         
