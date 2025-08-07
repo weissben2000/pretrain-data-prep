@@ -2,6 +2,8 @@ import numpy as np
 from copy import deepcopy
 import pandas as pd
 import math
+# import warnings
+# warnings.filterwarnings("ignore")
 
 # charge_levels = [[-9e19, 400], [400, 800], [800,1200], [1200, 9e19]]
 
@@ -70,6 +72,8 @@ def quantize_manual(x, charge_levels, quant_values, shuffled=True):
     if shuffled: 
         cols = [c for c in df.columns if c.isnumeric()]
         data = df[cols]
+    else:
+        data = df
     
     charge_levels= np.array(charge_levels)
     minval, maxval = [-9e19], [9e19]
@@ -87,24 +91,19 @@ def quantize_manual(x, charge_levels, quant_values, shuffled=True):
             bins = np.append(bins, [[charge_levels[c], charge_levels[c+1]]], axis =0)
     
     #quantize the data
-    dfq = None
+    # dfq = None
     for j, binbounds in enumerate(bins):
         #mask pixels by charge bin
-        mask = np.float32((data.values>binbounds[0]) & (data.values<binbounds[1]))
-
-        #set the digital value of each bin and combine bins
-        if dfq is None:
-            dfq = pd.DataFrame(quant_values[j]*mask)
-        else:
-            dfq = dfq+quant_values[j]*mask
+        mask = (df[cols].values>binbounds[0]) & (df[cols].values<binbounds[1])
+        data = data.mask(mask, quant_values[j])
     if cols:
-        df[cols] = dfq
+        df[cols] = data
     else:
-        df = dfq
+        df = data
     try:
         return df
     finally:
-        del data, dfq, mask, df
+        del data, mask, df
 
 def apply_offset(block, offset, pixel_array_sizeX, pixel_array_sizeY):
     '''
