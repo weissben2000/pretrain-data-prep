@@ -2,17 +2,21 @@ import numpy as np
 from copy import deepcopy
 import pandas as pd
 import math
+import time
+
 # import warnings
 # warnings.filterwarnings("ignore")
 
 # charge_levels = [[-9e19, 400], [400, 800], [800,1200], [1200, 9e19]]
 
-def add_noise(x, mu = 0, sig = 80, shuffled = True):
+def add_noise(x, mu = 0, sig = 80, shuffled = True, seed = None):
     '''
     Add random gaussian noise to input data 
         x (np.array or pd.DataFrame): input data with dims (event, time, 2d image)
         mu (float): mean of noise 
         sig (float): standard deviation of noise
+        shuffled (bool): was the dataset megashuffled? ie. are the labels and data both present in the df?
+        seed (None, int): seed for reproducable random noise sampling. Set to None to disable
     '''
     df = deepcopy(x)
     if shuffled:
@@ -22,7 +26,9 @@ def add_noise(x, mu = 0, sig = 80, shuffled = True):
         data=df
     
     dshape = data.shape
-    noise = np.random.normal(mu, sig, dshape)
+    
+    rng = np.random.default_rng(seed = seed)
+    noise = rng.normal(mu, sig, dshape)
 
     # if integrate: #DEPRECIATED
     #     noise = np.cumsum(noise, axis = 1)
@@ -57,7 +63,11 @@ def apply_threshold(x, thresh = 400, shuffled=True):
         
     return df
 
-def quantize_manual(x, charge_levels, quant_values, shuffled=True):
+def quantize_manual(x, 
+                    charge_levels=[400,800,1200], 
+                    quant_values=[0,1,2,3], 
+                    shuffled=True
+                   ):
     '''
     Quantize a df with manually defined charge level boundaries
         x (np.array or pd.DataFrame): input data (with or without labels).
@@ -68,13 +78,15 @@ def quantize_manual(x, charge_levels, quant_values, shuffled=True):
         shuffled (bool, default: True): is this dataframe from a dataset shuffled? ie. are
             clusters and labels both present in the dataframe x
     '''
+    # start_time = time.time()
     df = deepcopy(x)
     if shuffled: 
         cols = [c for c in df.columns if c.isnumeric()]
-        data = df[cols]
+        data = df[cols].values
     else:
-        data = df
-    
+        data = df.values
+    # print(f'get data: {time.time()-start_time:.4f}', f'total: {time.time()-start_time:.4f}')
+    # newtime = time.time()
     charge_levels= np.array(charge_levels)
     minval, maxval = [-9e19], [9e19]
 
@@ -89,21 +101,25 @@ def quantize_manual(x, charge_levels, quant_values, shuffled=True):
             bins = [[charge_levels[c], charge_levels[c+1]]]
         else:
             bins = np.append(bins, [[charge_levels[c], charge_levels[c+1]]], axis =0)
-    
+    # print(f'make bins: {time.time()-newtime:.4f}', f'total: {time.time()-start_time:.4f}')
+    # newtime = time.time()
+
     #quantize the data
-    # dfq = None
+    dfq = pd.DataFrame(np.zeros_like(data),index=df.index, columns=cols)
     for j, binbounds in enumerate(bins):
         #mask pixels by charge bin
-        mask = (df[cols].values>binbounds[0]) & (df[cols].values<binbounds[1])
-        data = data.mask(mask, quant_values[j])
+        mask = (data>binbounds[0]) & (data<binbounds[1])
+        dfq = dfq.mask(mask, quant_values[j])
     if cols:
-        df[cols] = data
+        df[cols] = dfq
     else:
-        df = data
+        df = dfq
+    # print(f'make quantized data: {time.time()-newtime:.4f}', f'total: {time.time()-start_time:.4f}')
+
     try:
         return df
     finally:
-        del data, mask, df
+        del dfq, data, mask, df, cols
 
 def apply_offset(block, offset, pixel_array_sizeX, pixel_array_sizeY):
     '''
