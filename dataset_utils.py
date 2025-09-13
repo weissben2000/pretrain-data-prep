@@ -39,11 +39,13 @@ def add_noise(x, mu = 0, sig = 80, shuffled = True, seed = None):
         df = data
     return df
 
-def apply_threshold(x, thresh = 400, shuffled=True):
+def apply_threshold(x, thresh = 400, minimum=True, shuffled=True):
     '''
     Apply a threshold to input data
-        data (np.array or pd.DataFrame): input data 
-        thresh (float): charge threshold to zero out all charge bellow
+        data (np.array or pd.DataFrame): input data
+        minimum (bool): zero charge bellow threshold?
+        thresh (float): Charge threshold to zero out charge bellow if minimum==True. 
+                        zeros charge above thresh if minimum==False.
     '''
     df = deepcopy(x)
     
@@ -52,9 +54,13 @@ def apply_threshold(x, thresh = 400, shuffled=True):
         data = df[cols]
     else:
         data=df
-        
-    bellowthresh = data < thresh
-    data[bellowthresh] = 0
+
+    if minimum:
+        bellowthresh = data < thresh
+        data[bellowthresh] = 0
+    else:
+        abovethresh = data > thresh
+        data[abovethresh] = 0
     
     if cols:
         df[cols] = data
