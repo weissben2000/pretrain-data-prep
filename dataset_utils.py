@@ -60,9 +60,9 @@ def apply_threshold(x, thresh = 400, minimum=True, shuffled=True):
         data[bellowthresh] = 0
     else:
         abovethresh = data > thresh
-        data[abovethresh] = 0
+        data[abovethresh] = thresh
     
-    if cols:
+    if shuffled:
         df[cols] = data
     else:
         df=data
@@ -116,7 +116,7 @@ def quantize_manual(x,
         #mask pixels by charge bin
         mask = (data>binbounds[0]) & (data<binbounds[1])
         dfq = dfq.mask(mask, quant_values[j])
-    if cols:
+    if shuffled:
         df[cols] = dfq
     else:
         df = dfq
